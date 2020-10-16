@@ -13,8 +13,8 @@
 ### 性能情况
 | 训练数据集 | 权值文件名称 | 测试数据集 | 输入图片大小 | mIOU | 
 | :-----: | :-----: | :------: | :------: | :------: | 
-| VOC12+SBD | [pspnet_mobilenetv2.h5](https://github.com/bubbliiiing/pspnet-tf2/releases/download/v1.0/pspnet_mobilenetv2.pth) | VOC-Val12 | 473x473| 71.04 | 
-| VOC12+SBD | [pspnet_resnet50.h5](https://github.com/bubbliiiing/pspnet-tf2/releases/download/v1.0/pspnet_resnet50.pth) | VOC-Val12 | 473x473| 79.92 | 
+| VOC12+SBD | [pspnet_mobilenetv2.h5](https://github.com/bubbliiiing/pspnet-tf2/releases/download/v1.0/pspnet_mobilenetv2.h5) | VOC-Val12 | 473x473| 71.04 | 
+| VOC12+SBD | [pspnet_resnet50.h5](https://github.com/bubbliiiing/pspnet-tf2/releases/download/v1.0/pspnet_resnet50.h5) | VOC-Val12 | 473x473| 79.92 | 
 
 ### 所需环境
 tensorflow-gpu==2.2.0
