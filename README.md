@@ -10,16 +10,21 @@
 6. [miou计算 miou](#miou计算)
 7. [参考资料 Reference](#Reference)
 
+### 性能情况
+| 训练数据集 | 权值文件名称 | 测试数据集 | 输入图片大小 | mIOU | 
+| :-----: | :-----: | :------: | :------: | :------: | 
+| VOC12+SBD | [pspnet_mobilenetv2.h5](https://github.com/bubbliiiing/pspnet-tf2/releases/download/v1.0/pspnet_mobilenetv2.pth) | VOC-Val12 | 473x473| 71.04 | 
+| VOC12+SBD | [pspnet_resnet50.h5](https://github.com/bubbliiiing/pspnet-tf2/releases/download/v1.0/pspnet_resnet50.pth) | VOC-Val12 | 473x473| 79.92 | 
+
 ### 所需环境
-tensorflow-gpu==1.13.1    
-keras==2.1.5   
+tensorflow-gpu==2.2.0
 
 ### 注意事项
 代码中的pspnet_mobilenetv2.h5和pspnet_resnet50.h5是基于VOC拓展数据集训练的。训练和预测时注意修改backbone。    
 
 ### 文件下载
 训练所需的pspnet_mobilenetv2.h5和pspnet_resnet50.h5可在百度网盘中下载。    
-链接: https://pan.baidu.com/s/1_nEtsjUOeJYHFyVec77l4Q 提取码: fikr     
+链接: https://pan.baidu.com/s/1cmCtnJnyAcREoXmcbmvenA 提取码: pf5b   
 VOC拓展数据集的百度网盘如下：  
 链接: https://pan.baidu.com/s/1BrR7AUM1XJvPWjKMIy2uEw 提取码: vszf    
 ### 预测步骤
