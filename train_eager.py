@@ -13,18 +13,22 @@ from utils.metrics import Iou_score, f_score
 from utils.utils import ModelCheckpoint
 from tqdm import tqdm
 from functools import partial
-@tf.function
-def train_step(images, labels, net, optimizer, loss):
-    with tf.GradientTape() as tape:
-        # 计算loss
-        prediction = net(images, training=True)
-        loss_value = loss(labels, prediction)
 
-    grads = tape.gradient(loss_value, net.trainable_variables)
-    optimizer.apply_gradients(zip(grads, net.trainable_variables))
-    
-    _f_score = f_score()(labels, prediction)
-    return loss_value, _f_score
+# 防止bug
+def get_train_step_fn():
+    @tf.function
+    def train_step(images, labels, net, optimizer, loss):
+        with tf.GradientTape() as tape:
+            # 计算loss
+            prediction = net(images, training=True)
+            loss_value = loss(labels, prediction)
+
+        grads = tape.gradient(loss_value, net.trainable_variables)
+        optimizer.apply_gradients(zip(grads, net.trainable_variables))
+        
+        _f_score = f_score()(labels, prediction)
+        return loss_value, _f_score
+    return train_step
 
 @tf.function
 def val_step(images, labels, net, optimizer, loss):
@@ -35,7 +39,7 @@ def val_step(images, labels, net, optimizer, loss):
 
     return loss_value, _f_score
 
-def fit_one_epoch(net, loss, optimizer, epoch, epoch_size, epoch_size_val, gen, genval, Epoch):
+def fit_one_epoch(net, loss, optimizer, epoch, epoch_size, epoch_size_val, gen, genval, Epoch, train_step):
     total_loss = 0
     val_loss = 0
     total_f_score = 0
@@ -56,6 +60,7 @@ def fit_one_epoch(net, loss, optimizer, epoch, epoch_size, epoch_size_val, gen, 
             waste_time = time.time() - start_time
             pbar.set_postfix(**{'Total Loss'        : total_loss / (iteration + 1), 
                                 'Total f_score'     : total_f_score / (iteration + 1),
+                                'lr'                : optimizer._decayed_lr(tf.float32).numpy(),
                                 's/step'            : waste_time})
             pbar.update(1)
             start_time = time.time()
@@ -195,14 +200,14 @@ if __name__ == "__main__":
         lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
             initial_learning_rate=Lr,
             decay_steps=epoch_size,
-            decay_rate=0.9,
+            decay_rate=0.95,
             staircase=True
         )
 
         optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
 
         for epoch in range(Init_Epoch,Freeze_Epoch):
-            fit_one_epoch(model, loss, optimizer, epoch, epoch_size, epoch_size_val, gen, gen_val, Freeze_Epoch)
+            fit_one_epoch(model, loss, optimizer, epoch, epoch_size, epoch_size_val, gen, gen_val, Freeze_Epoch, get_train_step_fn())
 
     for i in range(freeze_layers): 
         model.layers[i].trainable = True
@@ -233,11 +238,11 @@ if __name__ == "__main__":
         lr_schedule = tf.keras.optimizers.schedules.ExponentialDecay(
             initial_learning_rate=Lr,
             decay_steps=epoch_size,
-            decay_rate=0.9,
+            decay_rate=0.95,
             staircase=True
         )
 
         optimizer = tf.keras.optimizers.Adam(learning_rate=lr_schedule)
         
         for epoch in range(Freeze_Epoch,Unfreeze_Epoch):
-            fit_one_epoch(model, loss, optimizer, epoch, epoch_size, epoch_size_val, gen, gen_val, Unfreeze_Epoch)
+            fit_one_epoch(model, loss, optimizer, epoch, epoch_size, epoch_size_val, gen, gen_val, Unfreeze_Epoch, get_train_step_fn())
