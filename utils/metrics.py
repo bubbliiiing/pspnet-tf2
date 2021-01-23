@@ -1,5 +1,7 @@
-from tensorflow.keras import backend
 import tensorflow as tf
+from tensorflow.keras import backend
+
+
 def Iou_score(smooth = 1e-5, threhold = 0.5):
     def _Iou_score(y_true, y_pred):
         # score calculation

@@ -1,9 +1,12 @@
-from pspnet import Pspnet
-from PIL import Image
-import numpy as np
 import os
 
+import numpy as np
 import tensorflow as tf
+from PIL import Image
+from tqdm import tqdm
+
+from pspnet import Pspnet
+
 gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
 for gpu in gpus:
     tf.config.experimental.set_memory_growth(gpu, True)
@@ -18,13 +21,10 @@ class miou_Pspnet(Pspnet):
         img = np.asarray(img)
         
         pr = np.array(self.get_pred(img)[0])
-        
-        # 取出每一个像素点的分类结果
         pr = pr.argmax(axis=-1).reshape([self.model_image_size[0],self.model_image_size[1]])
         pr = pr[int((self.model_image_size[0]-nh)//2):int((self.model_image_size[0]-nh)//2+nh), int((self.model_image_size[1]-nw)//2):int((self.model_image_size[1]-nw)//2+nw)]
         
         image = Image.fromarray(np.uint8(pr)).resize((orininal_w,orininal_h), Image.NEAREST)
-
         return image
 
 pspnet = miou_Pspnet()
@@ -34,9 +34,8 @@ image_ids = open(r"VOCdevkit\VOC2007\ImageSets\Segmentation\val.txt",'r').read()
 if not os.path.exists("./miou_pr_dir"):
     os.makedirs("./miou_pr_dir")
 
-for image_id in image_ids:
+for image_id in tqdm(image_ids):
     image_path = "./VOCdevkit/VOC2007/JPEGImages/"+image_id+".jpg"
     image = Image.open(image_path)
     image = pspnet.detect_image(image)
     image.save("./miou_pr_dir/" + image_id + ".png")
-    print(image_id," done!")

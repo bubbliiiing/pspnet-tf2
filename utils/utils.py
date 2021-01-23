@@ -1,5 +1,6 @@
-import tensorflow as tf
 import numpy as np
+import tensorflow as tf
+
 
 class ModelCheckpoint(tf.keras.callbacks.Callback):
     def __init__(self, filepath, monitor='val_loss', verbose=0,
