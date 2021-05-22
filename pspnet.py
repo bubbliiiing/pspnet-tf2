@@ -1,12 +1,14 @@
 import colorsys
 import copy
 import os
+import time
 
 import numpy as np
 import tensorflow as tf
 from PIL import Image
 
 from nets.pspnet import pspnet
+
 
 def letterbox_image(image, size):
     '''resize image with unchanged aspect ratio using padding'''
@@ -79,6 +81,7 @@ class Pspnet(object):
             self.colors = list(
                 map(lambda x: (int(x[0] * 255), int(x[1] * 255), int(x[2] * 255)),
                     self.colors))
+            self.colors = (0, 0, 0)
 
     @tf.function
     def get_pred(self, photo):
@@ -142,3 +145,44 @@ class Pspnet(object):
             image = Image.blend(old_img,image,0.7)
 
         return image
+
+    def get_FPS(self, image, test_interval):
+        orininal_h = np.array(image).shape[0]
+        orininal_w = np.array(image).shape[1]
+
+        #---------------------------------------------------------#
+        #   给图像增加灰条，实现不失真的resize
+        #   也可以直接resize进行识别
+        #---------------------------------------------------------#
+        if self.letterbox_image:
+            img, nw, nh = letterbox_image(image,(self.model_image_size[1],self.model_image_size[0]))
+        else:
+            img = image.convert('RGB')
+            img = img.resize((self.model_image_size[1],self.model_image_size[0]), Image.BICUBIC)
+        img = np.asarray([np.array(img)/255])
+        
+        pr = np.array(self.get_pred(img)[0])
+        pr = pr.argmax(axis=-1).reshape([self.model_image_size[0],self.model_image_size[1]])
+        #--------------------------------------#
+        #   将灰条部分截取掉
+        #--------------------------------------#
+        if self.letterbox_image:
+            pr = pr[int((self.model_image_size[0]-nh)//2):int((self.model_image_size[0]-nh)//2+nh), int((self.model_image_size[1]-nw)//2):int((self.model_image_size[1]-nw)//2+nw)]
+        
+        image = Image.fromarray(np.uint8(pr)).resize((orininal_w,orininal_h), Image.NEAREST)
+
+        t1 = time.time()
+        for _ in range(test_interval):
+            pr = np.array(self.get_pred(img)[0])
+            pr = pr.argmax(axis=-1).reshape([self.model_image_size[0],self.model_image_size[1]])
+            #--------------------------------------#
+            #   将灰条部分截取掉
+            #--------------------------------------#
+            if self.letterbox_image:
+                pr = pr[int((self.model_image_size[0]-nh)//2):int((self.model_image_size[0]-nh)//2+nh), int((self.model_image_size[1]-nw)//2):int((self.model_image_size[1]-nw)//2+nw)]
+            
+            image = Image.fromarray(np.uint8(pr)).resize((orininal_w,orininal_h), Image.NEAREST)
+
+        t2 = time.time()
+        tact_time = (t2 - t1) / test_interval
+        return tact_time
