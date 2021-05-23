@@ -92,22 +92,26 @@ class Pspnet(object):
     #   检测图片
     #---------------------------------------------------#
     def detect_image(self, image):
+        #---------------------------------------------------------#
+        #   在这里将图像转换成RGB图像，防止灰度图在预测时报错。
+        #---------------------------------------------------------#
+        image = image.convert('RGB')
+
         #---------------------------------------------------#
         #   对输入图像进行一个备份，后面用于绘图
         #---------------------------------------------------#
         old_img = copy.deepcopy(image)
         orininal_h = np.array(image).shape[0]
         orininal_w = np.array(image).shape[1]
-
+        
         #---------------------------------------------------------#
         #   给图像增加灰条，实现不失真的resize
         #   也可以直接resize进行识别
         #---------------------------------------------------------#
         if self.letterbox_image:
-            img, nw, nh = letterbox_image(image,(self.model_image_size[1],self.model_image_size[0]))
+            img, nw, nh = letterbox_image(image, (self.model_image_size[1],self.model_image_size[0]))
         else:
-            img = image.convert('RGB')
-            img = img.resize((self.model_image_size[1],self.model_image_size[0]), Image.BICUBIC)
+            img = image.resize((self.model_image_size[1],self.model_image_size[0]), Image.BICUBIC)
         img = np.asarray([np.array(img)/255])
         
         #---------------------------------------------------#
