@@ -164,7 +164,7 @@ class Generator(object):
                 inputs = []
                 targets = []
                 if self.aux_branch:
-                    yield tmp_inp, np.array([tmp_targets, tmp_targets])
+                    yield tmp_inp, [tmp_targets, tmp_targets]
                 else:
                     yield tmp_inp, tmp_targets
 
