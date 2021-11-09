@@ -1,11 +1,6 @@
-import tensorflow as tf
-from tensorflow.keras import layers
 from tensorflow.keras.activations import relu
 from tensorflow.keras.layers import (Activation, Add, BatchNormalization,
-                                     Concatenate, Conv2D, DepthwiseConv2D,
-                                     Dropout, GlobalAveragePooling2D, Input,
-                                     Lambda, ZeroPadding2D)
-from tensorflow.keras.models import Model
+                                     Conv2D, DepthwiseConv2D, Input)
 
 
 def _make_divisible(v, divisor, min_value=None):

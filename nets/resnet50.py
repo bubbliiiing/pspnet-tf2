@@ -3,13 +3,9 @@
 #-------------------------------------------------------------#
 from __future__ import print_function
 
-import numpy as np
-import tensorflow.keras.backend as K
 from tensorflow.keras import layers
-from tensorflow.keras.layers import Input
-from tensorflow.keras.layers import Dense,Conv2D,MaxPooling2D,ZeroPadding2D,AveragePooling2D
-from tensorflow.keras.layers import Activation,BatchNormalization,Flatten
-from tensorflow.keras.models import Model
+from tensorflow.keras.layers import (Activation, BatchNormalization, Conv2D,
+                                     Input, MaxPooling2D, ZeroPadding2D)
 
 
 def identity_block(input_tensor, kernel_size, filters, stage, block, dilation_rate=1):
