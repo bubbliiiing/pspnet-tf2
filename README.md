@@ -25,10 +25,10 @@ tensorflow-gpu==2.2.0
 
 ### 文件下载
 训练所需的pspnet_mobilenetv2.h5和pspnet_resnet50.h5可在百度网盘中下载。    
-链接: https://pan.baidu.com/s/1WJxYFQ5_LCG0yzowFmaoow 提取码: q9yt    
+链接: https://pan.baidu.com/s/1-sIjtenHU05JzVIjyFwvxQ 提取码: upft   
 
 VOC拓展数据集的百度网盘如下：  
-链接: https://pan.baidu.com/s/1BrR7AUM1XJvPWjKMIy2uEw 提取码: vszf    
+链接: https://pan.baidu.com/s/1vkk3lMheUm6IjTXznlg7Ng 提取码: 44mk   
 
 ### 训练步骤
 #### a、训练voc数据集
