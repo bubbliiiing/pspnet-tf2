@@ -1,5 +1,8 @@
+import os
+
 import tensorflow as tf
 from tqdm import tqdm
+
 
 def get_train_step_fn():
     @tf.function
@@ -7,16 +10,16 @@ def get_train_step_fn():
         with tf.GradientTape() as tape:
             prediction = net(images, training=True)
             if aux_branch:
-                aux_loss    = loss(labels[0], prediction[0])
-                main_loss   = loss(labels[1], prediction[1])
-                loss_value  = aux_loss + main_loss
+                aux_loss    = loss(labels, prediction[0])
+                main_loss   = loss(labels, prediction[1])
+                loss_value  = 0.4 * aux_loss + main_loss
             else:
                 loss_value  = loss(labels, prediction)
         grads = tape.gradient(loss_value, net.trainable_variables)
         optimizer.apply_gradients(zip(grads, net.trainable_variables))
         
         if aux_branch:
-            _f_score = tf.reduce_mean(metrics(labels[1], prediction[1]))
+            _f_score = tf.reduce_mean(metrics(labels, prediction[1]))
         else:
             _f_score = tf.reduce_mean(metrics(labels, prediction))
         return loss_value, _f_score
@@ -26,17 +29,17 @@ def get_train_step_fn():
 def val_step(images, labels, net, optimizer, loss, aux_branch, metrics):
     prediction = net(images, training=False)
     if aux_branch:
-        aux_loss    = loss(labels[0], prediction[0])
-        main_loss   = loss(labels[1], prediction[1])
-        loss_value  = aux_loss + main_loss
-        _f_score    = tf.reduce_mean(metrics(labels[1], prediction[1]))
+        aux_loss    = loss(labels, prediction[0])
+        main_loss   = loss(labels, prediction[1])
+        loss_value  = 0.4 * aux_loss + main_loss
+        _f_score    = tf.reduce_mean(metrics(labels, prediction[1]))
     else:
         loss_value  = loss(labels, prediction)
         _f_score    = tf.reduce_mean(metrics(labels, prediction))
 
     return loss_value, _f_score
 
-def fit_one_epoch(net, loss, loss_history, optimizer, epoch, epoch_step, epoch_step_val, gen, gen_val, Epoch, aux_branch, metrics):
+def fit_one_epoch(net, loss, loss_history, optimizer, epoch, epoch_step, epoch_step_val, gen, gen_val, Epoch, aux_branch, metrics, save_period, save_dir):
     train_step      = get_train_step_fn()
     total_loss      = 0
     val_loss        = 0
@@ -81,4 +84,5 @@ def fit_one_epoch(net, loss, loss_history, optimizer, epoch, epoch_step, epoch_s
     loss_history.on_epoch_end([], logs)
     print('Epoch:'+ str(epoch+1) + '/' + str(Epoch))
     print('Total Loss: %.3f || Val Loss: %.3f ' % (total_loss / epoch_step, val_loss / epoch_step_val))
-    net.save_weights('logs/ep%03d-loss%.3f-val_loss%.3f.h5' % (epoch + 1, total_loss / epoch_step, val_loss / epoch_step_val))
+    if (epoch + 1) % save_period == 0 or epoch + 1 == Epoch:
+        net.save_weights(os.path.join(save_dir, 'ep%03d-loss%.3f-val_loss%.3f.h5' % (epoch + 1, total_loss / epoch_step, val_loss / epoch_step_val)))
