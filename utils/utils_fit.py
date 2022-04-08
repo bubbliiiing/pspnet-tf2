@@ -75,8 +75,8 @@ def fit_one_epoch(net, loss, loss_history, optimizer, epoch, epoch_step, epoch_s
             val_loss    += loss_value.numpy()
             val_f_score += _f_score.numpy()
 
-            pbar.set_postfix(**{'total Loss'    : val_loss / (iteration + 1), 
-                                'total f_score' : val_f_score / (iteration + 1)})
+            pbar.set_postfix(**{'val Loss'    : val_loss / (iteration + 1), 
+                                'val f_score' : val_f_score / (iteration + 1)})
             pbar.update(1)
     print('Finish Validation')
 
