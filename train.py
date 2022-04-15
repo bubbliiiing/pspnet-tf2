@@ -51,6 +51,12 @@ if __name__ == "__main__":
     #   是否使用eager模式训练
     #-------------------------------#
     eager       = False
+    #---------------------------------------------------------------------#
+    #   train_gpu   训练用到的GPU
+    #               默认为第一张卡、双卡为[0, 1]、三卡为[0, 1, 2]
+    #               在使用多GPU时，每个卡上的batch为总batch除以卡的数量。
+    #---------------------------------------------------------------------#
+    train_gpu   = [0,]
     #-----------------------------------------------------#
     #   num_classes     训练自己的数据集必须要修改的
     #                   自己需要的分类个数+1，如2+1
@@ -217,15 +223,44 @@ if __name__ == "__main__":
     num_workers     = 1
 
     #------------------------------------------------------#
-    #   获取model
+    #   设置用到的显卡
     #------------------------------------------------------#
-    model = pspnet([input_shape[0], input_shape[1], 3], num_classes, downsample_factor=downsample_factor, backbone=backbone, aux_branch=aux_branch)
-    if model_path != '':
+    os.environ["CUDA_VISIBLE_DEVICES"]  = ','.join(str(x) for x in train_gpu)
+    ngpus_per_node                      = len(train_gpu)
+    
+    gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
+    for gpu in gpus:
+        tf.config.experimental.set_memory_growth(gpu, True)
+        
+    if ngpus_per_node > 1:
+        strategy = tf.distribute.MirroredStrategy()
+    else:
+        strategy = None
+    print('Number of devices: {}'.format(ngpus_per_node))
+
+    if ngpus_per_node > 1:
+        with strategy.scope():
+            #------------------------------------------------------#
+            #   获取model
+            #------------------------------------------------------#
+            model = pspnet([input_shape[0], input_shape[1], 3], num_classes, downsample_factor=downsample_factor, backbone=backbone, aux_branch=aux_branch)
+            if model_path != '':
+                #------------------------------------------------------#
+                #   载入预训练权重
+                #------------------------------------------------------#
+                print('Load weights {}.'.format(model_path))
+                model.load_weights(model_path, by_name=True, skip_mismatch=True)
+    else:
         #------------------------------------------------------#
-        #   载入预训练权重
+        #   获取model
         #------------------------------------------------------#
-        print('Load weights {}.'.format(model_path))
-        model.load_weights(model_path, by_name=True, skip_mismatch=True)
+        model = pspnet([input_shape[0], input_shape[1], 3], num_classes, downsample_factor=downsample_factor, backbone=backbone, aux_branch=aux_branch)
+        if model_path != '':
+            #------------------------------------------------------#
+            #   载入预训练权重
+            #------------------------------------------------------#
+            print('Load weights {}.'.format(model_path))
+            model.load_weights(model_path, by_name=True, skip_mismatch=True)
 
     if focal_loss:
         if dice_loss:
@@ -362,7 +397,7 @@ if __name__ == "__main__":
                 K.set_value(optimizer.lr, lr)
                 
                 fit_one_epoch(model, loss, loss_history, optimizer, epoch, epoch_step, epoch_step_val, gen, gen_val, 
-                            end_epoch, aux_branch, f_score(), save_period, save_dir)
+                            end_epoch, aux_branch, f_score(), save_period, save_dir, strategy)
 
                 train_dataloader.on_epoch_end()
                 val_dataloader.on_epoch_end()
@@ -370,20 +405,35 @@ if __name__ == "__main__":
         else:
             start_epoch = Init_Epoch
             end_epoch   = Freeze_Epoch if Freeze_Train else UnFreeze_Epoch
-                
-            if aux_branch:
-                model.compile(
-                    loss            = [loss, loss], 
-                    loss_weights    = [1, 0.4], 
-                    optimizer       = optimizer,
-                    metrics         = [f_score()],
-                )
+            if ngpus_per_node > 1:
+                with strategy.scope():
+                    if aux_branch:
+                        model.compile(
+                            loss            = [loss, loss], 
+                            loss_weights    = [1, 0.4], 
+                            optimizer       = optimizer,
+                            metrics         = [f_score()],
+                        )
+                    else:
+                        model.compile(
+                            loss            = loss, 
+                            optimizer       = optimizer,
+                            metrics         = [f_score()]
+                        )
             else:
-                model.compile(
-                    loss            = loss, 
-                    optimizer       = optimizer,
-                    metrics         = [f_score()]
-                )
+                if aux_branch:
+                    model.compile(
+                        loss            = [loss, loss], 
+                        loss_weights    = [1, 0.4], 
+                        optimizer       = optimizer,
+                        metrics         = [f_score()],
+                    )
+                else:
+                    model.compile(
+                        loss            = loss, 
+                        optimizer       = optimizer,
+                        metrics         = [f_score()]
+                    )
 
             #-------------------------------------------------------------------------------#
             #   训练参数的设置
@@ -441,19 +491,35 @@ if __name__ == "__main__":
                     
                 for i in range(len(model.layers)): 
                     model.layers[i].trainable = True
-                if aux_branch:
-                    model.compile(
-                        loss            = [loss, loss], 
-                        loss_weights    = [1, 0.4], 
-                        optimizer       = optimizer,
-                        metrics         = [f_score()],
-                    )
+                if ngpus_per_node > 1:
+                    with strategy.scope():
+                        if aux_branch:
+                            model.compile(
+                                loss            = [loss, loss], 
+                                loss_weights    = [1, 0.4], 
+                                optimizer       = optimizer,
+                                metrics         = [f_score()],
+                            )
+                        else:
+                            model.compile(
+                                loss            = loss, 
+                                optimizer       = optimizer,
+                                metrics         = [f_score()]
+                            )
                 else:
-                    model.compile(
-                        loss            = loss, 
-                        optimizer       = optimizer,
-                        metrics         = [f_score()]
-                    )
+                    if aux_branch:
+                        model.compile(
+                            loss            = [loss, loss], 
+                            loss_weights    = [1, 0.4], 
+                            optimizer       = optimizer,
+                            metrics         = [f_score()],
+                        )
+                    else:
+                        model.compile(
+                            loss            = loss, 
+                            optimizer       = optimizer,
+                            metrics         = [f_score()]
+                        )
 
                 epoch_step      = num_train // batch_size
                 epoch_step_val  = num_val // batch_size
