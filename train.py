@@ -18,9 +18,6 @@ from utils.dataloader import PSPnetDataset
 from utils.utils_fit import fit_one_epoch
 from utils.utils_metrics import Iou_score, f_score
 
-gpus = tf.config.experimental.list_physical_devices(device_type='GPU')
-for gpu in gpus:
-    tf.config.experimental.set_memory_growth(gpu, True)
     
 '''
 训练自己的语义分割模型一定需要注意以下几点：
