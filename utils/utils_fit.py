@@ -35,22 +35,39 @@ def get_train_step_fn(strategy):
             return strategy.reduce(tf.distribute.ReduceOp.MEAN, per_replica_losses, axis=None), strategy.reduce(tf.distribute.ReduceOp.MEAN, per_replica_score, axis=None)
         return distributed_train_step
 
-@tf.function
-def val_step(images, labels, net, optimizer, loss, aux_branch, metrics):
-    prediction = net(images, training=False)
-    if aux_branch:
-        aux_loss    = loss(labels, prediction[0])
-        main_loss   = loss(labels, prediction[1])
-        loss_value  = 0.4 * aux_loss + main_loss
-        _f_score    = tf.reduce_mean(metrics(labels, prediction[1]))
+#----------------------#
+#   防止bug
+#----------------------#
+def get_val_step_fn(strategy):
+    @tf.function
+    def val_step(images, labels, net, optimizer, loss, aux_branch, metrics):
+        prediction = net(images, training=False)
+        if aux_branch:
+            aux_loss    = loss(labels, prediction[0])
+            main_loss   = loss(labels, prediction[1])
+            loss_value  = 0.4 * aux_loss + main_loss
+            _f_score    = tf.reduce_mean(metrics(labels, prediction[1]))
+        else:
+            loss_value  = loss(labels, prediction)
+            _f_score    = tf.reduce_mean(metrics(labels, prediction))
+
+        return loss_value, _f_score
+    if strategy == None:
+        return val_step
     else:
-        loss_value  = loss(labels, prediction)
-        _f_score    = tf.reduce_mean(metrics(labels, prediction))
-
-    return loss_value, _f_score
-
+        #----------------------#
+        #   多gpu验证
+        #----------------------#
+        @tf.function
+        def distributed_val_step(images, labels, net, optimizer, loss, aux_branch, metrics):
+            per_replica_losses, per_replica_score = strategy.run(val_step, args=(images, labels, net, optimizer, loss, aux_branch, metrics))
+            return strategy.reduce(tf.distribute.ReduceOp.MEAN, per_replica_losses, axis=None), strategy.reduce(tf.distribute.ReduceOp.MEAN, per_replica_score, axis=None)
+        return distributed_val_step
+    
 def fit_one_epoch(net, loss, loss_history, optimizer, epoch, epoch_step, epoch_step_val, gen, gen_val, Epoch, aux_branch, metrics, save_period, save_dir, strategy):
     train_step      = get_train_step_fn(strategy)
+    val_step        = get_val_step_fn(strategy)
+    
     total_loss      = 0
     val_loss        = 0
     total_f_score   = 0
@@ -61,8 +78,6 @@ def fit_one_epoch(net, loss, loss_history, optimizer, epoch, epoch_step, epoch_s
             if iteration >= epoch_step:
                 break
             images, labels = batch[0], batch[1]
-            labels = tf.cast(tf.convert_to_tensor(labels), tf.float32)
-
             loss_value, _f_score = train_step(images, labels, net, optimizer, loss, aux_branch, metrics)
             total_loss      += loss_value.numpy()
             total_f_score   += _f_score.numpy()
@@ -79,8 +94,6 @@ def fit_one_epoch(net, loss, loss_history, optimizer, epoch, epoch_step, epoch_s
             if iteration >= epoch_step_val:
                 break
             images, labels = batch[0], batch[1]
-            labels = tf.cast(tf.convert_to_tensor(labels), tf.float32)
-
             loss_value, _f_score = val_step(images, labels, net, optimizer, loss, aux_branch, metrics)
             val_loss    += loss_value.numpy()
             val_f_score += _f_score.numpy()
